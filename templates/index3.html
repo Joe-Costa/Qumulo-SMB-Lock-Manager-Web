@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMB Locks Viewer</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        padding: 0;
+        background-color: #f4f4f4;
+    }
+    h2 {
+        color: #333;
+    }
+    #getLocksButton, #searchForm button {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    #getLocksButton:hover, #searchForm button:hover {
+        background-color: #0056b3;
+    }
+    #searchForm input[type="text"] {
+        padding: 10px;
+        margin-right: 10px;
+        width: 300px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+    }
+    p {
+        color: #666;
+        padding: 10px;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    /* Overall table styling */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Header styling */
+    th {
+        background-color: #007bff;
+        color: #fff;
+        text-align: left;
+        padding: 12px 15px;
+    }
+
+    /* Row and data cell styling */
+    td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    /* Alternating row background for better readability */
+    tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    /* Hover effect for rows */
+    tr:hover {
+        background-color: #ddd;
+    }
+</style>
+
+<script>
+$(document).ready(function(){
+  $("#getLocksButton").click(function(){
+        // Clear the previous content
+        $("#locksCount").text("Loading...");
+    $.ajax({
+      url: "/get_smb_locks",
+      type: "get",
+      success: function(response){
+        $("#locksCount").text("Number of SMB Locks: " + response.locks_count);
+      },
+      error: function(xhr){
+        $("#locksCount").text("Failed to retrieve locks.");
+      }
+    });
+  });
+});
+</script>
+
+<script>
+    $(document).ready(function(){
+        $("#searchForm").submit(function(event){
+            event.preventDefault(); // Prevent the default form submission
+            $.ajax({
+                url: "/search_files",
+                type: "post",
+                data: {query: $("#searchQuery").val()},
+                success: function(response){
+                    // Check if the response has at least one entry
+                    if(response.length > 0){
+                        let tableHtml = "<table border='1'><tr><th>File ID</th><th>File Path</th><th>Mode</th><th>User</th><th>Owner Address</th><th>Node Address</th></tr>";
+                        response.forEach(function(file) {
+                            tableHtml += `<tr>
+                                            <td>${file.file_id}</td>
+                                            <td>${file.file_path}</td>
+                                            <td>${file.mode}</td>
+                                            <td>${file.user}</td>
+                                            <td>${file.owner_address}</td>
+                                            <td>${file.node_address}</td>
+                                          </tr>`;
+                        });
+                        tableHtml += "</table>";
+                        $("#searchResults").html(tableHtml);
+                    } else {
+                        $("#searchResults").html("No matching files found.");
+                    }
+                },
+                error: function(){
+                    $("#searchResults").html("Error performing the search.");
+                }
+            });
+        });
+    });
+    </script>
+    
+</head>
+<body>
+<h2>Check SMB Locks</h2>
+<button id="getLocksButton">Get SMB Locks</button>
+<p id="locksCount"></p>
+<form id="searchForm">
+    <input type="text" id="searchQuery" placeholder="Enter part of a file path">
+    <button type="submit">Search</button>
+</form>
+<p id="searchResults"></p>
+</body>
+</html>
