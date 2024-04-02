@@ -69,7 +69,7 @@ def search_files():
         for grant in smb_locks["grants"]:
             id = grant["file_id"]
             holder_ip_address = grant["owner_address"]
-            if locks_count > 100:
+            if len(smb_locks.get('grants', [])) > 100:
                 owner = "Too many locks"
             else:
               owner = resolve_owner(handle_owner[id]).get('name')
@@ -94,7 +94,6 @@ def get_smb_locks():
     global open_files
     global smb_locks
     global handle_owner
-    global locks_count
 
     url = f"https://{cluster_address}/api/v1/files/locks/smb/share-mode/"
 
@@ -150,7 +149,7 @@ our purposes'''
 
 def path_loader():
 
-    global handle_info
+    global handles
 
     url = f"https://{cluster_address}/api/v1/smb/files/?resolve_paths=true"
     
@@ -177,6 +176,32 @@ def path_loader():
     file_number_to_path = {handle["file_number"]: handle["handle_info"]["path"] for handle in handles}
     file_number_to_owner = {handle["file_number"]: handle["handle_info"]["owner"] for handle in handles}
     return file_number_to_path, file_number_to_owner
+
+def find_handle(file_id):
+    global handles
+    for keys in handles:
+        if keys["file_number"] == str(file_id):
+            return keys
+    return None
+
+@app.route('/close_handle', methods=['POST'])
+def close_handle():
+    file_id = request.json['file_id']
+    handle = find_handle(file_id)
+    if handle:
+        url = f"https://{cluster_address}/api/v1/smb/files/close"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        response = requests.post(url, headers=headers, json=[handle], verify=False)
+        if response.status_code == 200:
+            return jsonify({"message": f"File handle of {handle['handle_info']['path']} has been closed"})
+        else:
+            return jsonify({"error": f"Error closing file handle!! {response.status_code} - {response.text}"}), 500
+    else:
+        return jsonify({"error": "File handle not found"}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)
