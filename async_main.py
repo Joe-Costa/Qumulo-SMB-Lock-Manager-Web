@@ -187,7 +187,7 @@ def path_loader():
     file_number_to_owner = {handle["file_number"]: handle["handle_info"]["owner"] for handle in handles}
     return file_number_to_path, file_number_to_owner
 
-# Assitant function to close_handle() - This generates the complete JSON needed to close a handle
+# Assitant function to close_handles() - This generates the complete JSON needed to close a handle
 def find_handle(file_id):
     # Attempt to retrieve and deserialize the data from Redis
     handles_raw = redis_db.get('handles')
@@ -207,27 +207,32 @@ def find_handle(file_id):
     return None
 
 # Close file handle returned by JS from web UI
-@app.route('/close_handle', methods=['POST'])
-async def close_handle():
-    form_data = await request.get_json()
-    file_id = form_data['file_id']
-    handle = find_handle(file_id)
-    if handle:
-        url = f"https://{CLUSTER_ADDRESS}/api/v1/smb/files/close"
-        headers = {
-            "Authorization": f"Bearer {TOKEN}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=[handle], ssl=False) as response:
-                if response.status == 200:
-                    return jsonify({"message": f"File handle of {handle['handle_info']['path']} has been closed"})
-                else:
-                    response_text = await response.text()
-                    return jsonify({"error": f"Error closing file handle!! {response.status} - {response_text}"}), 500
-    else:
-        return jsonify({"error": "File handle not found"}), 404
+@app.route('/close_handles', methods=['POST'])
+async def close_handles():
+    data = await request.get_json()
+    file_ids = data['file_ids']
+    for id in file_ids:
+        handle = find_handle(str(id))
+        if handle:
+            # print("HANDLE", handle)
+            url = f"https://{CLUSTER_ADDRESS}/api/v1/smb/files/close"
+            headers = {
+                "Authorization": f"Bearer {TOKEN}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers=headers, json=[handle], ssl=False) as response:
+                    if response.status == 200:
+                        pass
+                        # return jsonify({"message": f"File handle of {handle['handle_info']['path']} has been closed"})
+                    else:
+                        response_text = await response.text()
+                        return jsonify({"error": f"Error closing file handle!! {response.status} - {response_text}"}), 500
+        else:
+            return jsonify({"error": "File handle not found"}), 404
+
+    return jsonify({"message": "Selected locks have been closed"}), 200
 
 
 async def main():

@@ -28,6 +28,18 @@
         background-color: #0056b3;
     }
 
+    #closeSelectedLocksButton, #searchForm button {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    #closeSelectedLocksButton:hover, #searchForm button:hover {
+        background-color: #fa1904;
+    }
+
     #close-btn {
         background-color: #007bff;
         color: white;
@@ -98,10 +110,10 @@
         background-color: #f2f2f2;
     }
 
-    /* Hover effect for rows */
-    /* tr:hover {
-        background-color: #ddd;
-    } */
+    th.no-hover:hover {
+        background-color: #007bff; /* or original color, to negate the hover effect */
+        cursor: default; /* Change cursor to default instead of pointer */
+    }
 
     /* Active sorting column */
     .sorting-active {
@@ -131,9 +143,11 @@ $(document).ready(function(){
 <script>function addEventListenersToHeaders() {
     const headers = document.querySelectorAll("#searchResults th");
     headers.forEach((header, index) => {
-        header.addEventListener("click", function() {
-            sortTable(index);
-        });
+        if (index !== 0) {
+            header.addEventListener("click", function() {
+                sortTable(index);
+            });
+        }
     });
 }</script>
 <script>
@@ -147,27 +161,34 @@ $(document).ready(function(){
                 data: {query: $("#searchQuery").val()},
                 success: function(response){
                     if(response.length > 0){
-                        let tableHtml = "<table border='1'><tr><th>File ID</th><th>File Path</th><th>Mode</th><th>User</th><th>Owner Address</th><th>Node Address</th><th>Action</th></tr>";
+                        let tableHtml = "<p id='rowCountDisplay'></p><table border='1'><tr><th class='no-hover'><input type='checkbox' id='selectAllLocks' /></th></th><th>File ID</th><th>File Path</th><th>Mode</th><th>User</th><th>Owner Address</th><th>Node Address</th></tr>";
                         response.forEach(function(file) {
                             tableHtml += `<tr>
+                                            <td><input type="checkbox" class="lock-checkbox" data-fileid="${file.file_id}"></td>
                                             <td>${file.file_id}</td>
                                             <td>${file.file_path}</td>
                                             <td>${file.mode}</td>
                                             <td>${file.user}</td>
                                             <td>${file.owner_address}</td>
                                             <td>${file.node_address}</td>
-                                            <td><button class="close-btn" data-fileid="${file.file_id}">Close Lock</button></td>
                                         </tr>`;
                         });
                         tableHtml += "</table>";
                         $("#searchResults").html(tableHtml);
+                        $("#rowCountDisplay").text("Matching results: " + response.length);
                         addEventListenersToHeaders();
                         $('.close-btn').click(function() {
                             var fileId = $(this).data('fileid');
                             closeHandle(fileId);
                         });
+                        $('#selectAllLocks').change(function() {
+                            var isChecked = $(this).is(':checked');
+                            // Check or uncheck all lock checkboxes based on the "Select All" checkbox status
+                            $('.lock-checkbox').prop('checked', isChecked);
+                        });
                     } else {
                         $("#searchResults").html("No matching files found.");
+                        $("#rowCountDisplay").text("Matching results: 0");
                     }
                 },
                 error: function(){
@@ -175,75 +196,93 @@ $(document).ready(function(){
                 }
             });
         });
+        $('#closeSelectedLocksButton').click(function() {
+            var selectedFileIds = $('.lock-checkbox:checked').map(function() {
+                return $(this).data('fileid');
+            }).get();
+            
+            if (selectedFileIds.length > 0) {
+                // Call a function to close all selected locks
+                closeSelectedHandles(selectedFileIds);
+            } else {
+                alert('No locks selected.');
+            }
+        });
     });
-    function closeHandle(fileId) {
+
+function closeSelectedHandles(fileIds) {
     $.ajax({
-        url: '/close_handle',
+        url: '/close_handles',
         method: 'POST',
         contentType: 'application/json',
-        dataType: 'json', // This ensures jQuery expects a JSON response
-        data: JSON.stringify({ file_id: fileId }),
+        data: JSON.stringify({ file_ids: fileIds }),
         success: function(response) {
-            alert(response.message);
-            // After the alert, this finds the button that was clicked by its data-fileid attribute,
-            // climbs up the DOM to find the closest table row (<tr>) element, and removes it from the DOM.
-            $('button[data-fileid="' + fileId + '"]').closest('tr').remove();
+            alert('Selected locks have been closed.');
+            // Remove rows for closed locks
+            fileIds.forEach(function(fileId) {
+                $('input.lock-checkbox[data-fileid="' + fileId + '"]').closest('tr').remove();
+            });
+            updateRowCount();
         },
         error: function(jqXHR) {
-            var errorMessage = jqXHR.responseJSON ? jqXHR.responseJSON.error : 'Unknown error';
-            alert('Error: ' + errorMessage);
+            alert('Error closing selected locks.');
         }
     });
 }
-    function sortTable(n) {
-            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-            table = document.querySelector("table");
-            switching = true;
-            // Set the sorting direction to ascending:
-            dir = "asc";
-            /* Make a loop that will continue until no switching has been done: */
-            while (switching) {
-                // Start by saying: no switching is done:
-                switching = false;
-                rows = table.rows;
-                /* Loop through all table rows (except the first, which contains table headers): */
-                for (i = 1; i < (rows.length - 1); i++) {
-                    // Start by saying there should be no switching:
-                    shouldSwitch = false;
-                    /* Get the two elements you want to compare, one from current row and one from the next: */
-                    x = rows[i].getElementsByTagName("TD")[n];
-                    y = rows[i + 1].getElementsByTagName("TD")[n];
-                    /* Check if the two rows should switch place, based on the direction, asc or desc: */
-                    if (dir == "asc") {
-                        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-                            // If so, mark as a switch and break the loop:
-                            shouldSwitch = true;
-                            break;
-                        }
-                    } else if (dir == "desc") {
-                        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-                            shouldSwitch = true;
-                            break;
-                        }
+
+function updateRowCount() {
+    var rowCount = $('#searchResults table tr').length - 1; 
+    $("#rowCountDisplay").text("Matching results: " + rowCount);
+
+}function sortTable(n) {
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.querySelector("table");
+        switching = true;
+        // Set the sorting direction to ascending:
+        dir = "asc";
+        /* Make a loop that will continue until no switching has been done: */
+        while (switching) {
+            // Start by saying: no switching is done:
+            switching = false;
+            rows = table.rows;
+            /* Loop through all table rows (except the first, which contains table headers): */
+            for (i = 1; i < (rows.length - 1); i++) {
+                // Start by saying there should be no switching:
+                shouldSwitch = false;
+                /* Get the two elements you want to compare, one from current row and one from the next: */
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+                /* Check if the two rows should switch place, based on the direction, asc or desc: */
+                if (dir == "asc") {
+                    if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                        // If so, mark as a switch and break the loop:
+                        shouldSwitch = true;
+                        break;
                     }
-                }
-                if (shouldSwitch) {
-                    /* If a switch has been marked, make the switch and mark that a switch has been done: */
-                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-                    switching = true;
-                    // Each time a switch is done, increase this count by 1:
-                    switchcount++;
-                } else {
-                    /* If no switching has been done AND the direction is "asc", set the direction to "desc" and run the while loop again. */
-                    if (switchcount == 0 && dir == "asc") {
-                        dir = "desc";
-                        switching = true;
+                } else if (dir == "desc") {
+                    if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                        shouldSwitch = true;
+                        break;
                     }
                 }
             }
-            // Highlight the active sorting column
-            highlightSortingColumn(n);
+            if (shouldSwitch) {
+                /* If a switch has been marked, make the switch and mark that a switch has been done: */
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                // Each time a switch is done, increase this count by 1:
+                switchcount++;
+            } else {
+                /* If no switching has been done AND the direction is "asc", set the direction to "desc" and run the while loop again. */
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
         }
+        // Highlight the active sorting column
+        highlightSortingColumn(n);
+    }
 
         function highlightSortingColumn(n) {
             // Remove active class from all headers
@@ -270,7 +309,7 @@ Fine tune your search to allow resolution of user names.
     <input type="text" id="searchQuery" placeholder="Enter part of a file path">
     <button type="submit">Search</button> 
 </form>
-
+<p><button id="closeSelectedLocksButton">Close Selected Locks</button></p>
 <p id="searchResults"></p>
 </body>
 </html>
