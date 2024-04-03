@@ -3,12 +3,9 @@ import requests
 import urllib3
 
 app = Flask(__name__)
-# token = "access-v1:uWQJlSA6UEkGUKtcnjx5B7oF26Me+HyRtYzXCLcDsioBAAAA9AEAAAAAAAAd9JFaMs6DLOMpDGYAAAAAiO5fMQ=="
-# cluster_address = "du72-10g.eng.qumulo.com"
 
-#AD\joe non-expiring token
-token = "access-v1:2nB3teYLGAP5EHy/jCup7y+K1W8jhL7kG1pufyWE7/4BAAAASAUAAAYAAAAayjW3QGkoiRA0DGYAAAAAhIyYNQ=="
-cluster_address = "music.eng.qumulo.com"
+token = "access-v1:foo..bar"
+cluster_address = "my.server.co.com"
 headers = {
     "Authorization": f"Bearer {token}",
     "Accept": "application/json",
@@ -24,19 +21,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def index():
     return render_template('index3.html')
 
-# # Path search function
-# @app.route('/search_files', methods=['POST'])
-# def search_files():
-#     # open_files = path_loader()
-#     query = request.form['query'].lower()
-#     matching_file_ids = [file_id for file_id, file_path in open_files.items() if query in file_path.lower()]
-
-#     return jsonify({"file_ids": matching_file_ids})]
-
+# Search function
 @app.route('/search_files', methods=['POST'])
 def search_files():
 
-    query = request.form['query'].lower()  # Assuming a form submission
+    # Grab the user's input from the web UI
+    query = request.form['query'].lower()  
+    
     
     if query != "":
         matching_file_ids = [file_id for file_id, file_path in open_files.items() if query in file_path.lower()]
@@ -64,6 +55,8 @@ def search_files():
                         "owner_address": grant.get("owner_address", ""),
                         "node_address": grant.get("node_address", "")
                     })
+
+    # List every lock if user sends a blank search form
     else:
         lock_data = []
         for grant in smb_locks["grants"]:
@@ -88,7 +81,7 @@ def search_files():
             })
     return jsonify(lock_data)
 
-# Get all cuurently open SMB locks and load the root of index.html
+# Get all currently open SMB locks 
 @app.route('/get_smb_locks', methods=['GET'])
 def get_smb_locks():
     global open_files
@@ -135,6 +128,7 @@ def get_smb_locks():
     # return jsonify({"locks_count": locks_count},{"handle_count": handle_count})
     return jsonify({"locks_count": locks_count})
 
+# Convert auth_id to user name
 def resolve_owner(owner):
     url = f"https://{cluster_address}/api/v1/identity/find"
     owner_json = { "auth_id": f"{owner}"}
@@ -143,22 +137,19 @@ def resolve_owner(owner):
     # print("OWNER NAME",owner_name)
     return(owner_name)
 
-'''This function lists all open files and creates a dict of File IDs as Keys and Paths as Values to expedite
-the resolution of file paths. The timing of this vs the currently held locks should be good enough for
-our purposes'''
 
+# Load all currently held SMB file handles
 def path_loader():
 
     global handles
 
     url = f"https://{cluster_address}/api/v1/smb/files/?resolve_paths=true"
     
-    # Get the initial API response
     response = requests.get(url, headers=headers, verify=False).json()
     handles = response['file_handles']
     next = response['paging']['next']
 
-    # I there are response pages to load, continue, esle return values
+    # If there are response pages to load, continue, esle return values
     if next != None:
         # Modify the url with pagination 'next' info for passes after the first response
         url = f"https://{cluster_address}/api" + next
@@ -172,11 +163,12 @@ def path_loader():
             handles.extend(response['file_handles'])
 
     # This contains a file ID to path k,v index of all open files, we need this to display paths in the
-    # GUI since  /v1/files/locks/smb/share-mode/ does not resolve paths'''
+    # GUI since  /v1/files/locks/smb/share-mode/ does not resolve paths
     file_number_to_path = {handle["file_number"]: handle["handle_info"]["path"] for handle in handles}
     file_number_to_owner = {handle["file_number"]: handle["handle_info"]["owner"] for handle in handles}
     return file_number_to_path, file_number_to_owner
 
+# Assitant function to close_handle()
 def find_handle(file_id):
     global handles
     for keys in handles:
@@ -184,6 +176,7 @@ def find_handle(file_id):
             return keys
     return None
 
+# Close file handle returned by JS from web UI
 @app.route('/close_handle', methods=['POST'])
 def close_handle():
     file_id = request.json['file_id']

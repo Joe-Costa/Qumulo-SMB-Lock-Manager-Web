@@ -36,6 +36,10 @@
         border-radius: 5px;
         cursor: pointer; }
 
+    #close-btn:hover, #searchForm button:hover {
+        background-color: #cb210b;
+    }
+
     #searchForm input[type="text"] {
         padding: 10px;
         margin-right: 10px;
@@ -106,7 +110,7 @@ $(document).ready(function(){
 <script>
     $(document).ready(function(){
         $("#searchForm").submit(function(event){
-            event.preventDefault(); // Prevent the default form submission
+            event.preventDefault(); 
             $.ajax({
                 url: "/search_files",
                 type: "post",
@@ -122,7 +126,7 @@ $(document).ready(function(){
                                             <td>${file.user}</td>
                                             <td>${file.owner_address}</td>
                                             <td>${file.node_address}</td>
-                                            <td><button id="getLocksButton", onclick='closeHandle("${file.file_id}")'>Close Lock</button></td>
+                                            <td><button id="close-btn", onclick='closeHandle("${file.file_id}")'>Close Lock</button></td>
                                         </tr>`;
                         });
                         tableHtml += "</table>";
@@ -145,7 +149,6 @@ $(document).ready(function(){
                 data: JSON.stringify({ file_id: fileId }),
                 success: function(response) {
                     alert(response.message);
-                    refreshLocks();
                 },
                 error: function(jqXHR) {
                     alert('Error: ' + jqXHR.responseJSON.error);
@@ -159,7 +162,7 @@ $(document).ready(function(){
 <h2>Qumulo SMB Lock Manager</h2>
 <button id="getLocksButton">Get SMB Locks</button>
 <p id="locksCount"></p>
-<p>Enter a blank search for all locks, not that user names will not be resolved if more than 100 locks are found
+<p>Enter a blank search for all locks, note that for performance reasons<br>user names will not be resolved if more than 100 locks are found
 <br>
 Fine tune your search to allow resolution of user names
 
