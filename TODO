@@ -1,0 +1,7 @@
+- Who am I on web UI
+- Cluster Name, URL in the UI
+- Refresh results after closing lock
+- Fix error handling
+- Gunicorn / Some other WSGI server integration
+- Redis docker config
+- finish requirements.txt
