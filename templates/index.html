@@ -54,6 +54,14 @@
         border-radius: 5px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+
+    #rcorners1 {
+        border-radius: 5px;
+        background: #184974;
+        padding: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: #ffffff;
+    }
     /* Overall table styling */
     table {
         width: 100%;
@@ -71,6 +79,14 @@
         padding: 12px 15px;
     }
 
+    /* Table header hover effect */
+    th:hover {
+        background-color: #0056b3; 
+        color: #fff; 
+        cursor: pointer; 
+    }
+
+
     /* Row and data cell styling */
     td {
         padding: 10px 15px;
@@ -83,8 +99,14 @@
     }
 
     /* Hover effect for rows */
-    tr:hover {
+    /* tr:hover {
         background-color: #ddd;
+    } */
+
+    /* Active sorting column */
+    .sorting-active {
+        background-color: #044280; /* Example: a different shade of blue */
+        color: #ffffff; /* White text for contrast */
     }
 </style>
 
@@ -106,8 +128,16 @@ $(document).ready(function(){
   });
 });
 </script>
-
+<script>function addEventListenersToHeaders() {
+    const headers = document.querySelectorAll("#searchResults th");
+    headers.forEach((header, index) => {
+        header.addEventListener("click", function() {
+            sortTable(index);
+        });
+    });
+}</script>
 <script>
+
     $(document).ready(function(){
         $("#searchForm").submit(function(event){
             event.preventDefault(); 
@@ -126,11 +156,16 @@ $(document).ready(function(){
                                             <td>${file.user}</td>
                                             <td>${file.owner_address}</td>
                                             <td>${file.node_address}</td>
-                                            <td><button id="close-btn", onclick='closeHandle("${file.file_id}")'>Close Lock</button></td>
+                                            <td><button class="close-btn" data-fileid="${file.file_id}">Close Lock</button></td>
                                         </tr>`;
                         });
                         tableHtml += "</table>";
                         $("#searchResults").html(tableHtml);
+                        addEventListenersToHeaders();
+                        $('.close-btn').click(function() {
+                            var fileId = $(this).data('fileid');
+                            closeHandle(fileId);
+                        });
                     } else {
                         $("#searchResults").html("No matching files found.");
                     }
@@ -142,36 +177,99 @@ $(document).ready(function(){
         });
     });
     function closeHandle(fileId) {
-            $.ajax({
-                url: '/close_handle',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ file_id: fileId }),
-                success: function(response) {
-                    alert(response.message);
-                },
-                error: function(jqXHR) {
-                    alert('Error: ' + jqXHR.responseJSON.error);
+    $.ajax({
+        url: '/close_handle',
+        method: 'POST',
+        contentType: 'application/json',
+        dataType: 'json', // This ensures jQuery expects a JSON response
+        data: JSON.stringify({ file_id: fileId }),
+        success: function(response) {
+            alert(response.message);
+            // After the alert, this finds the button that was clicked by its data-fileid attribute,
+            // climbs up the DOM to find the closest table row (<tr>) element, and removes it from the DOM.
+            $('button[data-fileid="' + fileId + '"]').closest('tr').remove();
+        },
+        error: function(jqXHR) {
+            var errorMessage = jqXHR.responseJSON ? jqXHR.responseJSON.error : 'Unknown error';
+            alert('Error: ' + errorMessage);
+        }
+    });
+}
+    function sortTable(n) {
+            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+            table = document.querySelector("table");
+            switching = true;
+            // Set the sorting direction to ascending:
+            dir = "asc";
+            /* Make a loop that will continue until no switching has been done: */
+            while (switching) {
+                // Start by saying: no switching is done:
+                switching = false;
+                rows = table.rows;
+                /* Loop through all table rows (except the first, which contains table headers): */
+                for (i = 1; i < (rows.length - 1); i++) {
+                    // Start by saying there should be no switching:
+                    shouldSwitch = false;
+                    /* Get the two elements you want to compare, one from current row and one from the next: */
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+                    /* Check if the two rows should switch place, based on the direction, asc or desc: */
+                    if (dir == "asc") {
+                        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                            // If so, mark as a switch and break the loop:
+                            shouldSwitch = true;
+                            break;
+                        }
+                    } else if (dir == "desc") {
+                        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
                 }
+                if (shouldSwitch) {
+                    /* If a switch has been marked, make the switch and mark that a switch has been done: */
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    // Each time a switch is done, increase this count by 1:
+                    switchcount++;
+                } else {
+                    /* If no switching has been done AND the direction is "asc", set the direction to "desc" and run the while loop again. */
+                    if (switchcount == 0 && dir == "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
+                }
+            }
+            // Highlight the active sorting column
+            highlightSortingColumn(n);
+        }
+
+        function highlightSortingColumn(n) {
+            // Remove active class from all headers
+            var headers = document.querySelectorAll("th");
+            headers.forEach(function(header) {
+                header.classList.remove("sorting-active");
             });
+            // Add active class to current header
+            headers[n].classList.add("sorting-active");
         }
     </script>
     
 </head>
+
 <body>
 <h2>Qumulo SMB Lock Manager</h2>
 <button id="getLocksButton">Get SMB Locks</button>
 <p id="locksCount"></p>
-<p>Enter a blank search for all locks, note that for performance reasons<br>user names will not be resolved if more than 100 locks are found
-<br>
-Fine tune your search to allow resolution of user names
-
+<p id="rcorners1">Enter a blank search for all locks, note that for performance reasons user names will not be resolved if more than 100 locks are found
+<br><br>
+Fine tune your search to allow resolution of user names.
 </p>
 <form id="searchForm">
     <input type="text" id="searchQuery" placeholder="Enter part of a file path">
-    <button type="submit">Search</button>
+    <button type="submit">Search</button> 
 </form>
-
 
 <p id="searchResults"></p>
 </body>

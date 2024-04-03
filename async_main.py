@@ -189,19 +189,27 @@ def path_loader():
 
 # Assitant function to close_handle() - This generates the complete JSON needed to close a handle
 def find_handle(file_id):
-    handles_raw = redis_db.get('handles')  # Retrieve from Redis
+    # Attempt to retrieve and deserialize the data from Redis
+    handles_raw = redis_db.get('handles')
     if handles_raw:
-        handles = json.loads(handles_raw)  # Deserialize
+        handles = json.loads(handles_raw)
+    else:
+        # If there's no data in Redis, initialize handles to an empty list
+        handles = []
 
-    for keys in handles:
-        if keys["file_number"] == str(file_id):
-            return keys
+    # Iterate over the deserialized list of handles
+    for handle in handles:
+        # Check if the current handle matches the file_id being sought
+        if handle.get("file_number") == str(file_id):
+            return handle
+
+    # Return None if no matching handle is found
     return None
 
 # Close file handle returned by JS from web UI
 @app.route('/close_handle', methods=['POST'])
 async def close_handle():
-    form_data = await request.form
+    form_data = await request.get_json()
     file_id = form_data['file_id']
     handle = find_handle(file_id)
     if handle:
@@ -211,13 +219,20 @@ async def close_handle():
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        response = requests.post(url, headers=headers, json=[handle], verify=False)
-        if response.status_code == 200:
-            return jsonify({"message": f"File handle of {handle['handle_info']['path']} has been closed"})
-        else:
-            return jsonify({"error": f"Error closing file handle!! {response.status_code} - {response.text}"}), 500
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=[handle], ssl=False) as response:
+                if response.status == 200:
+                    return jsonify({"message": f"File handle of {handle['handle_info']['path']} has been closed"})
+                else:
+                    response_text = await response.text()
+                    return jsonify({"error": f"Error closing file handle!! {response.status} - {response_text}"}), 500
     else:
         return jsonify({"error": "File handle not found"}), 404
 
+
+async def main():
+    await hypercorn.asyncio.serve(app)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    client.loop.set_debug(True)
+    client.loop.run_until_complete(main())
