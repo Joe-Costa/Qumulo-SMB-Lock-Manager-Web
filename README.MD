@@ -10,3 +10,6 @@ and `async_main.py`, which uses asyncio and aiohttp for some functions and "may"
 
 Run it with: `hypercorn async_main:app --workers 4 --bind 127.0.0.1:4000`
 
+Note that the async version is considerably different and uses Quart instead of Flask, so check your dependencies.
+
+Both require a running Redis Server instance.
