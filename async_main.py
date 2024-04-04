@@ -41,8 +41,11 @@ async def index():
 async def search_files():
 
     # Grab the user's input from the web UI
-    form_data = await request.form
-    query = form_data['query'].lower()
+    form_data = await request.get_json()
+    if form_data != None:
+        query = form_data['query']
+    else:
+        query = ""
 
     # Grab all open file handles and the holder's auth ID
     open_files, handle_owner = path_loader()
@@ -51,7 +54,7 @@ async def search_files():
     if smb_locks_raw:
         smb_locks = json.loads(smb_locks_raw)  # Deserialize
     else:
-        smb_locks = {}  # Or some default value
+        smb_locks = {}  
     
     if query != "":
         matching_file_ids = [file_id for file_id, file_path in open_files.items() if query in file_path.lower()]
@@ -61,7 +64,7 @@ async def search_files():
                 id = grant["file_id"]
                 holder_ip_address = grant["owner_address"]
                 if len(matching_file_ids) > 100:
-                    owner = "Too many locks"
+                    owner = "Too many locks to show"
                 else:
                     owner = await resolve_owner(handle_owner[id])
                     owner = owner.get('name')
@@ -87,9 +90,9 @@ async def search_files():
             id = grant["file_id"]
             holder_ip_address = grant["owner_address"]
             if len(smb_locks.get('grants', [])) > 100:
-                owner = "Too many locks"
+                owner = "Too many locks to show"
             else:
-              owner = await resolve_owner(handle_owner[id]).get('name')
+              owner = (await resolve_owner(handle_owner[id])).get('name')
             try:
                 file_path = open_files[id]
             except:
@@ -144,6 +147,7 @@ async def get_smb_locks():
     locks_count = len(smb_locks.get('grants', []))
     return jsonify({"locks_count": locks_count})
 
+# Convert auth IDs to usernames
 async def resolve_owner(owner):
     url = f"https://{CLUSTER_ADDRESS}/api/v1/identity/find"
     owner_json = {"auth_id": f"{owner}"}
@@ -189,20 +193,15 @@ def path_loader():
 
 # Assitant function to close_handles() - This generates the complete JSON needed to close a handle
 def find_handle(file_id):
-    # Attempt to retrieve and deserialize the data from Redis
     handles_raw = redis_db.get('handles')
     if handles_raw:
         handles = json.loads(handles_raw)
     else:
-        # If there's no data in Redis, initialize handles to an empty list
         handles = []
-
-    # Iterate over the deserialized list of handles
     for handle in handles:
         # Check if the current handle matches the file_id being sought
         if handle.get("file_number") == str(file_id):
             return handle
-
     # Return None if no matching handle is found
     return None
 
@@ -214,7 +213,6 @@ async def close_handles():
     for id in file_ids:
         handle = find_handle(str(id))
         if handle:
-            # print("HANDLE", handle)
             url = f"https://{CLUSTER_ADDRESS}/api/v1/smb/files/close"
             headers = {
                 "Authorization": f"Bearer {TOKEN}",
@@ -225,14 +223,14 @@ async def close_handles():
                 async with session.post(url, headers=headers, json=[handle], ssl=False) as response:
                     if response.status == 200:
                         pass
-                        # return jsonify({"message": f"File handle of {handle['handle_info']['path']} has been closed"})
+                        # return jsonify({"message": f"File handle of {handle['handle_info']['path']} has been closed"}), 200
                     else:
                         response_text = await response.text()
                         return jsonify({"error": f"Error closing file handle!! {response.status} - {response_text}"}), 500
         else:
             return jsonify({"error": "File handle not found"}), 404
 
-    return jsonify({"message": "Selected locks have been closed"}), 200
+    return jsonify({"message": "Selected locks have been released"}), 200
 
 
 async def main():
