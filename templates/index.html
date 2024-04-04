@@ -120,6 +120,15 @@
         background-color: #044280; /* Example: a different shade of blue */
         color: #ffffff; /* White text for contrast */
     }
+    .success-message {
+        color: green;
+        /* Additional styling */
+    }
+
+    .error-message {
+        color: red;
+        /* Additional styling */
+    }
 </style>
 
 <script>
@@ -155,6 +164,8 @@ $(document).ready(function(){
     $(document).ready(function(){
         $("#searchForm").submit(function(event){
             event.preventDefault(); 
+            // clear any previous lock closure messages
+            $("#messageDisplay").text('').removeClass('success-message error-message');
             $.ajax({
                 url: "/search_files",
                 type: "post",
@@ -197,15 +208,36 @@ $(document).ready(function(){
                 }
             });
         });
+        // $('#closeSelectedLocksButton').click(function() {
+        //     var selectedFileIds = $('.lock-checkbox:checked').map(function() {
+        //         return $(this).data('fileid');
+        //     }).get();
+            
+        //     if (selectedFileIds.length > 0) {
+        //         // Call a function to close all selected locks
+        //         closeSelectedHandles(selectedFileIds);
+        //     } else {
+        //         alert('No locks selected.');
+        //     }
+        // });
         $('#closeSelectedLocksButton').click(function() {
             var selectedFileIds = $('.lock-checkbox:checked').map(function() {
                 return $(this).data('fileid');
             }).get();
             
-            if (selectedFileIds.length > 0) {
-                // Call a function to close all selected locks
-                closeSelectedHandles(selectedFileIds);
+            // Count the selected locks
+            var numberOfSelectedLocks = selectedFileIds.length;
+            
+            if (numberOfSelectedLocks > 0) {
+                // Show a confirmation alert including the number of selected locks
+                var confirmClose = confirm("Are you sure you want to close the " + numberOfSelectedLocks + " selected lock(s)?\nPlease double check you are closing the correct handles as\nthis action could lead to lost user work!");
+                
+                // If the user confirms, proceed with closing the locks
+                if (confirmClose) {
+                    closeSelectedHandles(selectedFileIds);
+                }
             } else {
+                // No locks selected, show a message or handle accordingly
                 alert('No locks selected.');
             }
         });
@@ -218,7 +250,8 @@ function closeSelectedHandles(fileIds) {
         contentType: 'application/json',
         data: JSON.stringify({ file_ids: fileIds }),
         success: function(response) {
-            alert('Selected locks have been closed.');
+            // alert('Selected locks have been closed.');
+            $("#messageDisplay").text(response.message).addClass('success-message').removeClass('error-message');
             // Remove rows for closed locks
             fileIds.forEach(function(fileId) {
                 $('input.lock-checkbox[data-fileid="' + fileId + '"]').closest('tr').remove();
@@ -226,7 +259,7 @@ function closeSelectedHandles(fileIds) {
             updateRowCount();
         },
         error: function(jqXHR) {
-            alert('Error closing selected locks.');
+            $("#messageDisplay").text('Error: ' + errorMessage).addClass('error-message').removeClass('success-message');
         }
     });
 }
@@ -311,6 +344,7 @@ Fine tune your search to allow resolution of user names.
     <button type="submit">Search</button> 
 </form>
 <p><button id="closeSelectedLocksButton">Close Selected Locks</button></p>
+<p id="messageDisplay"></p>
 <p id="searchResults"></p>
 </body>
 </html>
