@@ -158,7 +158,8 @@ $(document).ready(function(){
             $.ajax({
                 url: "/search_files",
                 type: "post",
-                data: {query: $("#searchQuery").val()},
+                contentType: 'application/json',
+                data: JSON.stringify({query: $("#searchQuery").val()}),
                 success: function(response){
                     if(response.length > 0){
                         let tableHtml = "<p id='rowCountDisplay'></p><table border='1'><tr><th class='no-hover'><input type='checkbox' id='selectAllLocks' /></th></th><th>File ID</th><th>File Path</th><th>Mode</th><th>User</th><th>Owner Address</th><th>Node Address</th></tr>";

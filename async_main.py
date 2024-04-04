@@ -96,7 +96,7 @@ async def search_files():
             try:
                 file_path = open_files[id]
             except:
-                print(f"File Handle {id} already closed?")
+                print(f"File Handle {id} already closed?  SECOND")
                 continue
             lock_data.append({
                 "file_id": grant.get("file_id", ""),
@@ -155,7 +155,7 @@ async def resolve_owner(owner):
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=owner_json, headers=HEADERS, ssl=False) as response:  
             if response.status == 200:
-                owner_name = await response.json()  
+                owner_name = await response.json()
                 return owner_name
             else:
                 # Need to fix this error handler still
