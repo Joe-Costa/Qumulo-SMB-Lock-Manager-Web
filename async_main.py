@@ -92,11 +92,13 @@ async def search_files():
             if len(smb_locks.get('grants', [])) > 100:
                 owner = "Too many locks to show"
             else:
-              owner = (await resolve_owner(handle_owner[id])).get('name')
+                if id in handle_owner:
+                    owner = (await resolve_owner(handle_owner[id])).get('name')
+                else:
+                    continue
             try:
                 file_path = open_files[id]
             except:
-                print(f"File Handle {id} already closed?  SECOND")
                 continue
             lock_data.append({
                 "file_id": grant.get("file_id", ""),
