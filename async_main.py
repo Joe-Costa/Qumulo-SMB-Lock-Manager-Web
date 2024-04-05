@@ -175,6 +175,7 @@ async def get_smb_locks():
     locks_count = len(smb_locks.get('grants', []))
     return jsonify({"locks_count": locks_count})
 
+
 # @app.route('/get_smb_locks', methods=['GET'])
 # async def get_smb_locks():
 #     url = f"https://{CLUSTER_ADDRESS}/api/v1/files/locks/smb/share-mode/"
