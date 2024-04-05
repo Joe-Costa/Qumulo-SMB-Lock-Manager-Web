@@ -223,67 +223,52 @@ async def resolve_owner(owner):
                 return {"error": f"Failed to resolve owner: HTTP {response.status}"}
 
 # Load all currently held SMB file handles
-# def path_loader():
 
-#     url = f"https://{CLUSTER_ADDRESS}/api/v1/smb/files/?resolve_paths=true"
-    
-#     response = requests.get(url, headers=HEADERS, verify=False).json()
-#     handles = response['file_handles']
-#     redis_db.set('handles', json.dumps(handles))
-#     next = response['paging']['next']
 
-#     # If there are response pages to load, continue, esle return values
-#     if next != None:
-#         # Modify the url with pagination 'next' info for passes after the first response
-#         url = f"https://{CLUSTER_ADDRESS}/api" + next
-        
-#         # Loop to handle API pagination
-#         while next:
-#             response = requests.get(url, headers=HEADERS, verify=False).json()
-#             next = response['paging']['next']
-#             if next != None:
-#                 url = f"https://{CLUSTER_ADDRESS}/api" + next
-#             handles.extend(response['file_handles'])
-#             redis_db.set('handles', json.dumps(handles))
+async def fetch_page(session, url):
+    """Fetch a single page and return the JSON response."""
+    async with session.get(url, headers=HEADERS, ssl=USE_SSL) as response:
+        if response.status == 200:
+            return await response.json()
+        else:
+            return None
 
-#     # This contains a file ID to path k,v index of all open files, we need this to display paths in the
-#     # GUI since  /v1/files/locks/smb/share-mode/ does not resolve paths
-#     file_number_to_path = {handle["file_number"]: handle["handle_info"]["path"] for handle in handles}
-#     file_number_to_owner = {handle["file_number"]: handle["handle_info"]["owner"] for handle in handles}
-#     return file_number_to_path, file_number_to_owner
+async def fetch_all_pages(base_url):
+    """Fetch all pages concurrently and return the combined list of handles."""
+    async with aiohttp.ClientSession() as session:
+        response = await fetch_page(session, base_url)
+        if not response:
+            return [], []
+
+        handles = response['file_handles']
+        next_page = response['paging'].get('next')
+
+        tasks = []
+        while next_page:
+            url = f"https://{CLUSTER_ADDRESS}/api" + next_page
+            task = asyncio.create_task(fetch_page(session, url))
+            tasks.append(task)
+            # Assuming the response structure allows us to fetch the next URL before fetching its content
+            next_page = (await task).get('paging', {}).get('next')
+
+        results = await asyncio.gather(*tasks)
+        for result in results:
+            if result:
+                handles.extend(result['file_handles'])
+
+        return handles
 
 async def path_loader():
-    url = f"https://{CLUSTER_ADDRESS}/api/v1/smb/files/?resolve_paths=true"
-    
-    # Initialize handles list to collect all file handles
-    handles = []
-    
-    async with aiohttp.ClientSession() as session:  # Use aiohttp's session for asynchronous requests
-        while url:
-            async with session.get(url, headers=HEADERS, ssl=USE_SSL) as response:
-                if response.status == 200:
-                    json_response = await response.json()
-                    handles.extend(json_response['file_handles'])
-                    # Use .get() with a default of None to avoid KeyError if 'next' doesn't exist
-                    next_page = json_response['paging'].get('next', None)
-                    
-                    if next_page is not None:
-                        # Update the URL for the next iteration
-                        url = f"https://{CLUSTER_ADDRESS}/api" + next_page
-                    else:
-                        # If there's no next page, break the loop
-                        url = None
-                else:
-                    # Handle error responses appropriately
-                    print(f"Error loading SMB file handles: {response.status} - {await response.text()}")
-                    break
+    base_url = f"https://{CLUSTER_ADDRESS}/api/v1/smb/files/?resolve_paths=true"
+    handles = await fetch_all_pages(base_url)
+
+    # Process handles to create mappings
+    file_number_to_path = {handle["file_number"]: handle["handle_info"]["path"] for handle in handles}
+    file_number_to_owner = {handle["file_number"]: handle["handle_info"]["owner"] for handle in handles}
 
     # After collecting all handles, save them in Redis
     redis_db.set('handles', json.dumps(handles))
 
-    # Prepare and return the mappings for file number to path and owner
-    file_number_to_path = {handle["file_number"]: handle["handle_info"]["path"] for handle in handles}
-    file_number_to_owner = {handle["file_number"]: handle["handle_info"]["owner"] for handle in handles}
     return file_number_to_path, file_number_to_owner
 
 # Assitant function to close_handles() - This generates the complete JSON needed to close a handle
