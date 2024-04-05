@@ -137,76 +137,76 @@ async def search_files():
     return jsonify(lock_data)
 
 # Get all currently open SMB locks 
-# @app.route('/get_smb_locks', methods=['GET'])
-# async def get_smb_locks():
-
-#     url = f"https://{CLUSTER_ADDRESS}/api/v1/files/locks/smb/share-mode/"
-
-#     # Grab the initial API response
-#     try:
-#         response = requests.get(url, headers=HEADERS, verify=False)
-#         after_cursor = response.json().get('paging', {})
-#     ######  Most error handlers are still broken !! #####
-#     except:
-#         error = f"Error authenticating or reaching the cluster! {response.status_code} - {response.text}"
-#         return jsonify({"error": error}), 400
-
-#     # Load first page of locks in smb_locks or exit if status code is not 200
-#     if response.status_code == 200:
-#         smb_locks = response.json()
-#         redis_db.set('smb_locks', json.dumps(smb_locks))
-#     else:
-#         print(f"Error getting SMB locks! {response.status_code} - {response.text}")
-#         return None
-
-#     # Modify the URL with the pagination info after the first API response
-#     url = f"https://{CLUSTER_ADDRESS}/" + after_cursor['next'][1:]
-
-#     # Continue loading smb_locks as long as there are grants
-#     while response.json().get('grants'):
-#         response = requests.get(url, headers=HEADERS, verify=False)
-#         after_cursor = response.json().get('paging', {})
-#         if response.json().get('grants'):
-#             smb_locks = {'grants': smb_locks['grants'] + response.json()['grants']}
-#             redis_db.set('smb_locks', json.dumps(smb_locks))
-#         # Update url with the next page
-#         url = f"https://{CLUSTER_ADDRESS}/" + after_cursor['next'][1:]
-    
-#     locks_count = len(smb_locks.get('grants', []))
-#     return jsonify({"locks_count": locks_count})
-
 @app.route('/get_smb_locks', methods=['GET'])
 async def get_smb_locks():
+
     url = f"https://{CLUSTER_ADDRESS}/api/v1/files/locks/smb/share-mode/"
 
-    smb_locks = {'grants': []}  # Initialize smb_locks to collect data
+    # Grab the initial API response
+    try:
+        response = requests.get(url, headers=HEADERS, verify=False)
+        after_cursor = response.json().get('paging', {})
+    ######  Most error handlers are still broken !! #####
+    except:
+        error = f"Error authenticating or reaching the cluster! {response.status_code} - {response.text}"
+        return jsonify({"error": error}), 400
 
-    async with aiohttp.ClientSession() as session:  # Use aiohttp's session
-        while url:
-            async with session.get(url, headers=HEADERS, ssl=USE_SSL) as response:
-                if response.status == 200:
-                    json_response = await response.json()
+    # Load first page of locks in smb_locks or exit if status code is not 200
+    if response.status_code == 200:
+        smb_locks = response.json()
+        redis_db.set('smb_locks', json.dumps(smb_locks))
+    else:
+        print(f"Error getting SMB locks! {response.status_code} - {response.text}")
+        return None
 
-                    # Extend the smb_locks list with new grants
-                    smb_locks['grants'].extend(json_response.get('grants', []))
+    # Modify the URL with the pagination info after the first API response
+    url = f"https://{CLUSTER_ADDRESS}/" + after_cursor['next'][1:]
 
-                    # Attempt to get the 'next' pagination URL
-                    next_page = json_response.get('paging', {}).get('next', None)
-                    if next_page:
-                        # Update the URL for the next iteration with the pagination info
-                        url = f"https://{CLUSTER_ADDRESS}/{next_page[1:]}"
-                    else:
-                        # No more pages, break the loop
-                        url = None
-                else:
-                    # Handle non-200 responses
-                    error = f"Error retrieving SMB locks: {response.status} - {await response.text()}"
-                    return jsonify({"error": error}), 400
-
-    # After collecting all locks, save them in Redis
-    redis_db.set('smb_locks', json.dumps(smb_locks))
+    # Continue loading smb_locks as long as there are grants
+    while response.json().get('grants'):
+        response = requests.get(url, headers=HEADERS, verify=False)
+        after_cursor = response.json().get('paging', {})
+        if response.json().get('grants'):
+            smb_locks = {'grants': smb_locks['grants'] + response.json()['grants']}
+            redis_db.set('smb_locks', json.dumps(smb_locks))
+        # Update url with the next page
+        url = f"https://{CLUSTER_ADDRESS}/" + after_cursor['next'][1:]
+    
     locks_count = len(smb_locks.get('grants', []))
     return jsonify({"locks_count": locks_count})
+
+# @app.route('/get_smb_locks', methods=['GET'])
+# async def get_smb_locks():
+#     url = f"https://{CLUSTER_ADDRESS}/api/v1/files/locks/smb/share-mode/"
+
+#     smb_locks = {'grants': []}  # Initialize smb_locks to collect data
+
+#     async with aiohttp.ClientSession() as session:  # Use aiohttp's session
+#         while url:
+#             async with session.get(url, headers=HEADERS, ssl=USE_SSL) as response:
+#                 if response.status == 200:
+#                     json_response = await response.json()
+
+#                     # Extend the smb_locks list with new grants
+#                     smb_locks['grants'].extend(json_response.get('grants', []))
+
+#                     # Attempt to get the 'next' pagination URL
+#                     next_page = json_response.get('paging', {}).get('next', None)
+#                     if next_page:
+#                         # Update the URL for the next iteration with the pagination info
+#                         url = f"https://{CLUSTER_ADDRESS}/{next_page[1:]}"
+#                     else:
+#                         # No more pages, break the loop
+#                         url = None
+#                 else:
+#                     # Handle non-200 responses
+#                     error = f"Error retrieving SMB locks: {response.status} - {await response.text()}"
+#                     return jsonify({"error": error}), 400
+
+#     # After collecting all locks, save them in Redis
+#     redis_db.set('smb_locks', json.dumps(smb_locks))
+#     locks_count = len(smb_locks.get('grants', []))
+#     return jsonify({"locks_count": locks_count})
 
 # Convert auth IDs to usernames
 async def resolve_owner(owner):
