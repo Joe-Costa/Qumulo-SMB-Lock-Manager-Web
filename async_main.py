@@ -22,7 +22,7 @@ HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
 }
-required_rights = ['PRIVILEGE_FS_LOCK_READ', 'PRIVILEGE_SMB_FILE_HANDLE_READ', 'PRIVILEGE_SMB_FILE_HANDLE_WRITE']
+required_rights = ['PRIVILEGE_FS_LOCK_READ', 'PRIVILEGE_SMB_FILE_HANDLE_READ', 'PRIVILEGE_SMB_FILE_HANDLE_WRITE', 'PRIVILEGE_IDENTITY_READ']
 
 redis_host = 'redis'  
 redis_port = 6379  
@@ -93,7 +93,6 @@ async def search_files():
                     owner = "Too many locks to show"
                 else:
                     owner = (await resolve_owner(handle_owner[id])).get('name')
-                    owner = owner.get('name')
                 try:
                     file_path = open_files[id]
                 except:
