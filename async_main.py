@@ -137,7 +137,7 @@ async def search_files():
     return jsonify(lock_data)
 
 # Get all currently open SMB locks 
-@app.route('/get_smb_locks', methods=['GET'])
+# @app.route('/get_smb_locks', methods=['GET'])
 # async def get_smb_locks():
 
 #     url = f"https://{CLUSTER_ADDRESS}/api/v1/files/locks/smb/share-mode/"
