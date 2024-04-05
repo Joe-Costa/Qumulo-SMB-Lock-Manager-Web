@@ -11,8 +11,9 @@ import aiohttp
 app = Quart(__name__)
 
 # Load the config file
+global user_allowed
 config = configparser.ConfigParser()
-config.read("smb_lock_mgr.conf")
+config.read("async_main.conf")
 CLUSTER_ADDRESS = config["CLUSTER"]["CLUSTER_ADDRESS"]
 TOKEN = config["CLUSTER"]["TOKEN"]
 CONFIG_SAVE_FILE_LOCATION = os.path.join(os.getcwd(), '')
@@ -22,8 +23,9 @@ HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
 }
+required_rights = ['PRIVILEGE_FS_LOCK_READ', 'PRIVILEGE_SMB_FILE_HANDLE_READ', 'PRIVILEGE_SMB_FILE_HANDLE_WRITE']
 
-redis_host = 'localhost'  
+redis_host = 'redis'  
 redis_port = 6379  
 redis_db = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=True)  
 
@@ -31,10 +33,35 @@ redis_db = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=
 if not USE_SSL:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+# Lookup user name and rights
+def verify_id_and_rights():
+    url = f"https://{CLUSTER_ADDRESS}/api/v1/session/who-am-i"
+    user_info = requests.get(url, headers=HEADERS, verify=False).json()
+    who_am_i = user_info['name']
+    user_rbac_privileges = user_info['privileges']
+    matching_rights = [ x for x in required_rights if x in user_rbac_privileges]
+
+    if set(matching_rights) == set(required_rights):
+        user_has_rights = True
+    else:
+        user_has_rights = False
+        # s = set(matching_rights)
+        # missing_rights = [ x for x in required_rights if x not in s]
+        # user_has_rights = f"User {who_am_i} is missing these required RBAC privileges:\n {missing_rights}"
+    return who_am_i, user_has_rights
+
+# place a verify_connectivity function
+who_am_i, user_allowed = verify_id_and_rights()
+
 # Default Flask route on page load
-@app.route('/')
-async def index():
-    return await render_template('index.html')
+if user_allowed:
+    @app.route('/')
+    async def index():
+        return await render_template('index.html', who_am_i=who_am_i, cluster_address=CLUSTER_ADDRESS)
+else:
+    @app.route('/')
+    async def index():
+        return await render_template('access_denied.html')
 
 # Search function
 @app.route('/search_files', methods=['POST'])
@@ -237,6 +264,7 @@ async def close_handles():
 
 async def main():
     await hypercorn.asyncio.serve(app)
+
 
 if __name__ == '__main__':
     client.loop.set_debug(True)

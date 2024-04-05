@@ -40,6 +40,10 @@
         background-color: #fa1904;
     }
 
+    #locksCount {
+        margin-left: 10px;
+    }
+
     #close-btn {
         background-color: #007bff;
         color: white;
@@ -72,6 +76,7 @@
         border-radius: 5px;
         background: #184974;
         padding: 10px;
+        padding-left: 20px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         color: #ffffff;
     }
@@ -82,6 +87,7 @@
         margin-top: 20px;
         background-color: #f9f9f9;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
     }
 
     /* Header styling */
@@ -334,11 +340,14 @@ function updateRowCount() {
 
 <body>
 <h2>Qumulo SMB Lock Manager</h2>
-<button id="getLocksButton">Get SMB Locks</button>
-<p id="locksCount"></p>
+Logged in user: <b>{{ who_am_i }}</b>, managing cluster <b>{{ cluster_address }}</b><br>
+<p>
+    <button id="getLocksButton">Get SMB Locks</button>  
+    <span id="locksCount"></span>
+
+</p>
 <p id="rcorners1">Enter a blank search for all locks, note that for performance reasons user names will not be resolved if more than 100 locks are found
-<br><br>
-Fine tune your search to allow resolution of user names.
+<br><br>Fine tune your search to allow resolution of user names.
 </p>
 <form id="searchForm">
     <input type="text" id="searchQuery" placeholder="Enter part of a file path">
@@ -346,8 +355,8 @@ Fine tune your search to allow resolution of user names.
 </form>
 <p><button id="closeSelectedLocksButton">Close Selected Locks</button></p>
 <div id="resultsContainer">
-    <p id="messageDisplay"></p>
-    <p id="searchResults"></p>
+    <span id="messageDisplay"></span>
+    <span id="searchResults"></span>
 </div>
 </body>
 </html>
