@@ -92,7 +92,7 @@ async def search_files():
                 if len(matching_file_ids) > 100:
                     owner = "Too many locks to show"
                 else:
-                    owner = await resolve_owner(handle_owner[id])
+                    owner = (await resolve_owner(handle_owner[id])).get('name')
                     owner = owner.get('name')
                 try:
                     file_path = open_files[id]
