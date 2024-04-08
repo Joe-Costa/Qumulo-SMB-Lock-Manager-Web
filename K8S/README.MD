@@ -7,4 +7,4 @@
 - Copy both `.yml` files locally
 - Edit the `ConfigMap` section of  `deploy-lock-mgr.yml` with your `TOKEN` and `CLUSTER_ADDRESS`
 - Apply both `.yml` files with `kubectl apply -f deploy-lock-mgr.yml,redis-deployment.yml`
-- This configuration does not provide for an `Ingress`, you may optionally configured it to match your needs
+- This configuration does not provide for an `Ingress`, you may optionally configure one to match your needs
