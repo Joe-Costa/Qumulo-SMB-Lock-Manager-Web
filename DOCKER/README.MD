@@ -2,6 +2,8 @@
 
 ## Installation
 
+**These directions assume your host has network access to `hub.docker.com`**
+
 - Download or clone all files in the DOCKER directory
 - Edit `/app/async_main.conf` with your information
 - Edit `dockerfile` and `docker-compose.yml` if you'd like to use a different TCP port than 4000
