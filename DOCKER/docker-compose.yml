@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  lock-mgr:
+    build: .
+    ports:
+      - "4000:4000"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+    volumes:
+      - ./app:/usr/app
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"

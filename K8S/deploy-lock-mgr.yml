@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lock-mgr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lock-mgr
+  template:
+    metadata:
+      labels:
+        app: lock-mgr
+    spec:
+      containers:
+      - name: lock-mgr
+        image: jcostaasc/qumulo-lock-mgr:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4000
+        env:
+        - name: REDIS_HOST
+          value: "redis"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /usr/app
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lock-mgr-service
+spec:
+  selector:
+    app: lock-mgr
+  ports:
+    - protocol: TCP
+      port: 443
+      targetPort: 4000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  async_main.conf: |
+    [CLUSTER]
+    TOKEN = access-v1:foo-bar-baz==
+    CLUSTER_ADDRESS = your.qumulo.yourcompany.com
+    # Set this to False to allow self-signed certificates
+    USE_SSL = False

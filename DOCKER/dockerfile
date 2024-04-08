@@ -1,0 +1,13 @@
+# Pull the latest qumulo-lock-mgr image from Docker Hub
+FROM jcostaasc/qumulo-lock-mgr:latest
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Make port 4000 available to the world outside this container
+# If you'd like to change this, please make sure you also edit the CMD line
+# and also change the appropriate lines in docker-compose.yml
+EXPOSE 4000
+
+# Run async_main.py when the container launches
+CMD ["hypercorn", "async_main:app", "--workers", "4", "--bind", "0.0.0.0:4000"]
