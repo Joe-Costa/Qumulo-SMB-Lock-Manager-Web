@@ -44,5 +44,5 @@ Three different install methods are provided:
 
 [A Kubernetes deployment](K8S)
 
-[The source file for anything want to build their own Docker image or self hosting](src)
+[The source file for anyone want to build their own Docker image or self hosting](src)
 
