@@ -215,18 +215,6 @@ $(document).ready(function(){
                 }
             });
         });
-        // $('#closeSelectedLocksButton').click(function() {
-        //     var selectedFileIds = $('.lock-checkbox:checked').map(function() {
-        //         return $(this).data('fileid');
-        //     }).get();
-            
-        //     if (selectedFileIds.length > 0) {
-        //         // Call a function to close all selected locks
-        //         closeSelectedHandles(selectedFileIds);
-        //     } else {
-        //         alert('No locks selected.');
-        //     }
-        // });
         $('#closeSelectedLocksButton').click(function() {
             var selectedFileIds = $('.lock-checkbox:checked').map(function() {
                 return $(this).data('fileid');
