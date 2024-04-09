@@ -1,4 +1,4 @@
-from quart import Quart, render_template, request, jsonify
+from quart import Quart, render_template, request, Response, jsonify
 import requests
 import urllib3
 import os
@@ -13,17 +13,20 @@ app = Quart(__name__)
 # Load and apply the config file
 config = configparser.ConfigParser()
 config.read("async_main.conf")
+
 CLUSTER_ADDRESS = config["CLUSTER"]["CLUSTER_ADDRESS"]
 TOKEN = config["CLUSTER"]["TOKEN"]
-CONFIG_SAVE_FILE_LOCATION = os.path.join(os.getcwd(), '')
 USE_SSL = config["CLUSTER"].getboolean('USE_SSL')
+WEB_UI_USERNAME = config["WEBUI"]["USERNAME"]
+WEB_UI_PASSWORD = config["WEBUI"]["PASSWORD"]
+
 HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
     "Accept": "application/json",
     "Content-Type": "application/json",
 }
-required_rights = ['PRIVILEGE_FS_LOCK_READ', 'PRIVILEGE_SMB_FILE_HANDLE_READ', 'PRIVILEGE_SMB_FILE_HANDLE_WRITE', 'PRIVILEGE_IDENTITY_READ']
 
+required_rights = ['PRIVILEGE_FS_LOCK_READ', 'PRIVILEGE_SMB_FILE_HANDLE_READ', 'PRIVILEGE_SMB_FILE_HANDLE_WRITE', 'PRIVILEGE_IDENTITY_READ']
 redis_host = 'redis'  
 redis_port = 6379  
 redis_db = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=True)  
@@ -31,6 +34,26 @@ redis_db = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=
 # Disable "Insecure HTTP" errors if certs are not available
 if not USE_SSL:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Basic Auth 
+def check_auth(username, password):
+    return username == WEB_UI_USERNAME and password == WEB_UI_PASSWORD
+
+# Send 401 response for basic auth
+def authenticate():
+    return Response(
+    '<h1>Could not verify your access level for this service.\n'
+    'Access denied</h1>', 401,
+    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+# decorator to add basic auth to / route
+def requires_auth(f):
+    async def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return await f(*args, **kwargs)
+    return decorated
 
 # Lookup user name and rights
 def verify_id_and_rights():
@@ -44,17 +67,15 @@ def verify_id_and_rights():
         user_has_rights = True
     else:
         user_has_rights = False
-        # s = set(matching_rights)
-        # missing_rights = [ x for x in required_rights if x not in s]
-        # user_has_rights = f"User {who_am_i} is missing these required RBAC privileges:\n {missing_rights}"
     return who_am_i, user_has_rights
 
-# place a verify_connectivity function
+# Verify basic connectivity and RBAC roles function
 who_am_i, user_allowed = verify_id_and_rights()
 
-# Default Flask route on page load
+# Default Quart route on page load
 if user_allowed:
     @app.route('/')
+    @requires_auth
     async def index():
         return await render_template('index.html', who_am_i=who_am_i, cluster_address=CLUSTER_ADDRESS)
 else:
@@ -145,7 +166,6 @@ async def get_smb_locks():
     try:
         response = requests.get(url, headers=HEADERS, verify=False)
         after_cursor = response.json().get('paging', {})
-    ######  Most error handlers are still broken !! #####
     except:
         error = f"Error authenticating or reaching the cluster! {response.status_code} - {response.text}"
         return jsonify({"error": error}), 400
