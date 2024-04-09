@@ -4,22 +4,6 @@ This script provides a web based GUI to list and close SMB locks on a Qumulo clu
 
 # -- *Beta* --
 
-## This app requires a running Redis Server instance!
-
-Installation for local test hosting:
-
-- Tested with Python 3.11.6
-- Copy all files locally
-- Edit async_main.conf with your information
-- Install requirements.txt
-- Fire up Redis server, the local hosted version of the script expects it to be at 127.0.0.1:6379
-
-Running the Lock Manager:
-
-Note that the port :4000 can be whatever you'd like.  `--workers 4` can be a lower value if you'd like.
-
-`hypercorn async_main:app --workers 4 --bind 127.0.0.1:4000`
-
 
 ## Why close file handles and what happens on the client when a file handle is closed?
 
@@ -40,8 +24,25 @@ locally and reopen it from the Qumulo cluster to get back in sync with the store
 
 **_There is a possibility that the user which held the lock could lose work in progress if the file handle is closed before the file has been saved_**, so use caution when closing file handles!
 
-Run it with: `hypercorn async_main:app --workers 4 --bind 127.0.0.1:4000` or whatever IP:port you want
+## RBAC privileges required
 
-Note that the async version is considerably different and uses Quart instead of Flask, so check your dependencies.
+This script requires a valid session token for a user with the following RBAC privileges:
 
+`['PRIVILEGE_FS_LOCK_READ', 'PRIVILEGE_SMB_FILE_HANDLE_READ', 'PRIVILEGE_SMB_FILE_HANDLE_WRITE', 'PRIVILEGE_IDENTITY_READ']`
+
+## Helpful Qumulo Care Articles:
+
+[How to get an Access Token](https://care.qumulo.com/hc/en-us/articles/360004600994-Authenticating-with-Qumulo-s-REST-API#acquiring-a-bearer-token-by-using-the-web-ui-0-3) 
+
+[Qumulo Role Based Access Control](https://care.qumulo.com/hc/en-us/articles/360036591633-Role-Based-Access-Control-RBAC-with-Qumulo-Core#managing-roles-by-using-the-web-ui-0-7)
+
+## Installation:
+
+Three different install methods are provided:
+
+[A Docker deployment using `docker-compose`](DOCKER)
+
+[A Kubernetes deployment](K8S)
+
+[The source file for anything want to build their own Docker image or self hosting](src)
 

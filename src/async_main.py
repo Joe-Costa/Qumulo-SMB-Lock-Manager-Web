@@ -174,39 +174,6 @@ async def get_smb_locks():
     locks_count = len(smb_locks.get('grants', []))
     return jsonify({"locks_count": locks_count})
 
-# @app.route('/get_smb_locks', methods=['GET'])
-# async def get_smb_locks():
-#     url = f"https://{CLUSTER_ADDRESS}/api/v1/files/locks/smb/share-mode/"
-
-#     smb_locks = {'grants': []}  # Initialize smb_locks to collect data
-
-#     async with aiohttp.ClientSession() as session:  # Use aiohttp's session
-#         while url:
-#             async with session.get(url, headers=HEADERS, ssl=USE_SSL) as response:
-#                 if response.status == 200:
-#                     json_response = await response.json()
-
-#                     # Extend the smb_locks list with new grants
-#                     smb_locks['grants'].extend(json_response.get('grants', []))
-
-#                     # Attempt to get the 'next' pagination URL
-#                     next_page = json_response.get('paging', {}).get('next', None)
-#                     if next_page:
-#                         # Update the URL for the next iteration with the pagination info
-#                         url = f"https://{CLUSTER_ADDRESS}/{next_page[1:]}"
-#                     else:
-#                         # No more pages, break the loop
-#                         url = None
-#                 else:
-#                     # Handle non-200 responses
-#                     error = f"Error retrieving SMB locks: {response.status} - {await response.text()}"
-#                     return jsonify({"error": error}), 400
-
-#     # After collecting all locks, save them in Redis
-#     redis_db.set('smb_locks', json.dumps(smb_locks))
-#     locks_count = len(smb_locks.get('grants', []))
-#     return jsonify({"locks_count": locks_count})
-
 # Convert auth IDs to usernames
 async def resolve_owner(owner):
     url = f"https://{CLUSTER_ADDRESS}/api/v1/identity/find"
@@ -222,8 +189,6 @@ async def resolve_owner(owner):
                 return {"error": f"Failed to resolve owner: HTTP {response.status}"}
 
 # Load all currently held SMB file handles
-
-
 async def fetch_page(session, url):
     """Fetch a single page and return the JSON response."""
     async with session.get(url, headers=HEADERS, ssl=USE_SSL) as response:
