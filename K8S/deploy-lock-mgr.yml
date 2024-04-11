@@ -52,6 +52,9 @@ data:
     CLUSTER_ADDRESS = your.qumulo.yourcompany.com
     # Set this to False to allow self-signed certificates
     USE_SSL = False
+    # The WEBUI section creates a username and password for basic access
+    # control to the Web UI
+    # This will not refer to any Qumulo or Active Directory user
     [WEBUI]
     USERNAME = your_ui_user_name
     PASSWORD = your_secret_password
