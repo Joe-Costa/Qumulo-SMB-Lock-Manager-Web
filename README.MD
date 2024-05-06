@@ -24,6 +24,15 @@ locally and reopen it from the Qumulo cluster to get back in sync with the store
 
 **_There is a possibility that the user which held the lock could lose work in progress if the file handle is closed before the file has been saved_**, so use caution when closing file handles!
 
+## Why use this tool vs the fsmgmt.msc tool in Windows?
+
+The FS Management Tool in Windows, beyond not being available for Mac or Linux clients, can only display up to 10k locks or file handles, which is a limit that is often exceeded among Qumulo customers, while this tool has been field-tested to handle in excess of 32k locks.
+
+Please note that if you expect to regularly handle such large numbers of locks that the SMB Lock Manager should be deployed in a network location that is as close as possible to the Qumulo cluster for the
+best possible performance.  
+
+Also please be aware that retrieving and displaying 20k or more locks could take several minutes depending on the network latency between the Lock Manager and the Qumulo cluster.
+
 ## RBAC privileges required
 
 This script requires a valid session token for a user with the following RBAC privileges:
