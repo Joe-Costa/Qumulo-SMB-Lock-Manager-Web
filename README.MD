@@ -55,3 +55,6 @@ Three different install methods are provided:
 
 [The source file for anyone want to build their own Docker image or self hosting](src)
 
+## Screen Shot:
+
+![screenshot](./screenshot/screenshot.jpg)
