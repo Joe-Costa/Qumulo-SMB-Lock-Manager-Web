@@ -55,7 +55,7 @@ Three different install methods are provided:
 
 [The source file for anyone want to build their own Docker image or self hosting](src)
 
-This application uses Redis as an in-memory cache of open files and will greatly benefit from a host with 4GB or more RAM that has a low latency connection to the Qumulo cluster.
+This application uses Redis as an in-memory cache of open files and will greatly benefit from a host with 4GB or more RAM and that has a low latency connection to the Qumulo cluster.
 
 ## Screen Shot:
 
